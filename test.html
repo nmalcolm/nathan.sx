@@ -1,0 +1,16 @@
+<script>
+function displayMessage (evt) {
+	var message;
+	message = "I got " + evt.data + " from " + evt.origin;
+
+	alert(document.domain + ": " + message)
+}
+
+if (window.addEventListener) {
+	// For standards-compliant web browsers
+	window.addEventListener("message", displayMessage, false);
+}
+else {
+	window.attachEvent("onmessage", displayMessage);
+}
+</script>
