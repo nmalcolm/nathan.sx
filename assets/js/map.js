@@ -1,6 +1,6 @@
 $(function() {
-  var visited = "#2ecc71";
-  var home = "#3498db";
+  var visited = "#1ABC9C";
+  var home = "#00D9FF";
 
   var data = {
     "GB": home,
@@ -27,7 +27,7 @@ $(function() {
 
   $('#vmap').vectorMap({
     map: 'world_mill',
-    backgroundColor: '#0f2744',
+    backgroundColor: '#181c25',
     series: {
       regions: [{
         values: data,
