@@ -5,14 +5,215 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" href="/assets/pico.min.css">
-    <title>Hello world!</title>
+    <title>Nathan.sx</title>
+    <style>
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+      .card {
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        background: var(--card-background-color);
+        box-shadow: var(--card-box-shadow);
+      }
+      .card h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+      }
+      .metric {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+      }
+      .label {
+        color: var(--muted-color);
+        font-size: 0.9rem;
+      }
+      .loading {
+        color: var(--muted-color);
+      }
+      .error {
+        color: #e74c3c;
+        font-size: 0.9rem;
+      }
+      .detail {
+        margin-top: 0.5rem;
+        font-size: 0.95rem;
+      }
+    </style>
   </head>
   <body>
     <main class="container">
-      <hgroup><
+      <hgroup>
         <h1>Nathan.sx</h1>
         <p>It's a web site</p>
       </hgroup>
+
+      <div class="dashboard-grid">
+        <!-- Weather Card -->
+        <article class="card">
+          <h3>Weather</h3>
+          <div id="weather-content" class="loading">Loading...</div>
+        </article>
+
+        <!-- Air Quality Card -->
+        <article class="card">
+          <h3>Air Quality</h3>
+          <div id="aqi-content" class="loading">Loading...</div>
+        </article>
+
+        <!-- Currency Card -->
+        <article class="card">
+          <h3>USD to GEL</h3>
+          <div id="currency-content" class="loading">Loading...</div>
+        </article>
+
+        <!-- Time Card -->
+        <article class="card">
+          <h3>Local Time</h3>
+          <div id="time-content"></div>
+        </article>
+      </div>
     </main>
+
+    <script>
+      const LAT = 41.7151;
+      const LON = 44.8271;
+
+      async function fetchWeather() {
+        try {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
+          const response = await fetch(url);
+          
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          
+          const temp = Math.round(data.current.temperature_2m);
+          const humidity = data.current.relative_humidity_2m;
+          const windSpeed = data.current.wind_speed_10m;
+          
+          const weatherCodes = {
+            0: '☀️ Clear', 1: '🌤️ Mainly Clear', 2: '⛅ Partly Cloudy', 3: '☁️ Overcast',
+            45: '🌫️ Foggy', 48: '🌫️ Foggy', 51: '🌦️ Light Drizzle', 53: '🌦️ Drizzle',
+            55: '🌧️ Heavy Drizzle', 61: '🌧️ Light Rain', 63: '🌧️ Rain', 65: '🌧️ Heavy Rain',
+            71: '🌨️ Light Snow', 73: '🌨️ Snow', 75: '🌨️ Heavy Snow', 95: '⛈️ Thunderstorm'
+          };
+          
+          const condition = weatherCodes[data.current.weather_code] || '🌡️ Unknown';
+          
+          document.getElementById('weather-content').innerHTML = `
+            <div class="metric">${temp}°C</div>
+            <div class="detail">${condition}</div>
+            <div class="detail">💧 Humidity: ${humidity}%</div>
+            <div class="detail">💨 Wind: ${windSpeed} km/h</div>
+          `;
+        } catch (error) {
+          console.error('Weather error:', error);
+          document.getElementById('weather-content').innerHTML = 
+            `<div class="error">Unable to load weather data</div>`;
+        }
+      }
+
+      async function fetchAirQuality() {
+        try {
+          const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}&current=european_aqi,pm10,pm2_5`;
+          const response = await fetch(url);
+          
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          
+          const aqi = data.current.european_aqi;
+          const pm25 = data.current.pm2_5;
+          const pm10 = data.current.pm10;
+          
+          let quality = '';
+          let emoji = '';
+          if (aqi <= 20) { quality = 'Good'; emoji = '✅'; }
+          else if (aqi <= 40) { quality = 'Fair'; emoji = '🟢'; }
+          else if (aqi <= 60) { quality = 'Moderate'; emoji = '🟡'; }
+          else if (aqi <= 80) { quality = 'Poor'; emoji = '🟠'; }
+          else if (aqi <= 100) { quality = 'Very Poor'; emoji = '🔴'; }
+          else { quality = 'Extremely Poor'; emoji = '🟣'; }
+          
+          document.getElementById('aqi-content').innerHTML = `
+            <div class="metric">${emoji} ${aqi}</div>
+            <div class="detail">${quality}</div>
+            <div class="detail">PM2.5: ${pm25.toFixed(1)} µg/m³</div>
+            <div class="detail">PM10: ${pm10.toFixed(1)} µg/m³</div>
+          `;
+        } catch (error) {
+          console.error('Air quality error:', error);
+          document.getElementById('aqi-content').innerHTML = 
+            `<div class="error">Unable to load air quality data</div>`;
+        }
+      }
+
+      async function fetchCurrency() {
+        try {
+          const url = 'https://hexarate.paikama.co/api/rates/GEL/USD/latest';
+          const response = await fetch(url);
+          
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const result = await response.json();
+          
+          const rate = result.data.mid;
+          const inverse = (1 / rate).toFixed(4);
+          const date = new Date(result.data.timestamp).toLocaleDateString('en-US');
+          
+          document.getElementById('currency-content').innerHTML = `
+            <div class="metric">1 USD = ${inverse} GEL</div>
+          `;
+        } catch (error) {
+          console.error('Currency error:', error);
+          document.getElementById('currency-content').innerHTML = 
+            `<div class="error">Unable to load currency data</div>`;
+        }
+      }
+
+      function updateTime() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { 
+          timeZone: 'Asia/Tbilisi',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        const dateStr = now.toLocaleDateString('en-US', {
+          timeZone: 'Asia/Tbilisi',
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        document.getElementById('time-content').innerHTML = `
+          <div class="metric">${timeStr}</div>
+          <div class="detail">${dateStr}</div>
+        `;
+      }
+
+      async function initDashboard() {
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        await Promise.allSettled([
+          fetchWeather(),
+          fetchAirQuality(),
+          fetchCurrency()
+        ]);
+        
+        setInterval(() => {
+          fetchWeather();
+          fetchAirQuality();
+          fetchCurrency();
+        }, 300000);
+      }
+
+      initDashboard();
+    </script>
   </body>
 </html>
