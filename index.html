@@ -161,7 +161,7 @@
           const result = await response.json();
           
           const rate = result.data.mid;
-          const inverse = (1 / rate).toFixed(4);
+          const inverse = (1 / rate).toFixed(2);
           const date = new Date(result.data.timestamp).toLocaleDateString('en-US');
           
           document.getElementById('currency-content').innerHTML = `
