@@ -20,7 +20,8 @@ $(function() {
     "UZ": visited,
     "KZ": visited,
     "AM": visited,
-    "TR": visited
+    "TR": visited,
+    "SA": visited
   };
 
   $('#count').text(Object.keys(data).length);
